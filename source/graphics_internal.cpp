@@ -59,21 +59,23 @@ VkCommandPool vk_imgui_command_pool;
 VkCommandBuffer vk_imgui_command_buffer;
 
 VkFormat selectDepthFormat(VkPhysicalDevice physical_device) {
-	// Prefer the original format and preserve stencil support in the fallback.
-	const VkFormat candidates[] = {
-		VK_FORMAT_D24_UNORM_S8_UINT,
-		VK_FORMAT_D32_SFLOAT_S8_UINT,
-	};
+    const VkFormat candidates[] = {
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D16_UNORM_S8_UINT,
+        VK_FORMAT_D16_UNORM,  // <-- Добавлен для AMD
+    };
 
-	for (VkFormat format : candidates) {
-		VkFormatProperties properties{};
-		vkGetPhysicalDeviceFormatProperties(physical_device, format, &properties);
-		if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-			return format;
-		}
-	}
+    for (VkFormat format : candidates) {
+        VkFormatProperties properties{};
+        vkGetPhysicalDeviceFormatProperties(physical_device, format, &properties);
+        if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+            return format;
+        }
+    }
 
-	return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_UNDEFINED;
 }
 
 bool initializeImGUI() {
@@ -461,9 +463,14 @@ bool initialize(GLFWwindow* const window) {
 		return false;
 	}
 
+	int fb_width, fb_height;
+	glfwGetFramebufferSize(window, &fb_width, &fb_height);
+
 	vkb::SwapchainBuilder sb(vkb_device);
 
-	auto sb_result = sb.use_default_format_selection()
+	// 2. Явно передаем размер в builder
+	auto sb_result = sb.set_desired_extent(uint32_t(fb_width), uint32_t(fb_height))
+					   .use_default_format_selection()
 					   .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
 					   .use_default_image_usage_flags()
 					   .build();
@@ -782,11 +789,14 @@ void submitAndPresent() {
 	};
 
 	VkResult result = vkQueuePresentKHR(context.graphics_queue, &present);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR ||
-	    result == VK_SUBOPTIMAL_KHR ||
-	    vk_swapchain_resize_require) {
+	
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || vk_swapchain_resize_require) {
 		rebuildSwapchain(vk_swapchain_resize_width, vk_swapchain_resize_height);
-	} else {
+	} else if (result == VK_SUBOPTIMAL_KHR) {
+		// Swapchain работает, но драйвер считает, что его можно оптимизировать.
+		// Это НЕ ошибка, пересоздавать не обязательно (или можно вызвать rebuildSwapchain).
+	} else if (result != VK_SUCCESS) {
+		// Вот здесь настоящая ошибка
 		std::cerr << "Failed to present Vulkan swapchain image\n";
 	}
 }

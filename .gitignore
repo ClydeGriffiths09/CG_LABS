@@ -1,3 +1,14 @@
-build-*/
-shaders/*.spv
+build/
+cmake-build-*/
+out/
+
+*.spv
+
+*.o
+*.obj
+
+.vscode/
+.idea/
+*.swp
+
 imgui.ini

@@ -19,7 +19,7 @@ elseif(WIN32)
 	endif()
 	target_compile_definitions(${PROJECT_NAME} PRIVATE -D_USE_MATH_DEFINES)
 else()
-	message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} is not supported")
+	#message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} is not supported")
 endif()
 
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED TRUE CXX_STANDARD 20)
@@ -103,8 +103,8 @@ if(GLSLC_FOUND)
 	# To compile shader file, use compile_shader function with a file name
 	# of a shader inside shaders directory. See example below:
 
-	# compile_shader(example.vert)
-	# compile_shader(example.frag)
+	compile_shader(parallelepiped.vert)
+	compile_shader(parallelepiped.frag)
 
 	add_custom_target(shaders DEPENDS ${_SHADER_BINARIES})
 	add_dependencies(${PROJECT_NAME} shaders)
