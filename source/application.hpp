@@ -17,14 +17,31 @@ void render(const graphics::internal::FrameData& fd);
 
 struct Vertex {
     glm::vec3 pos;
+    glm::vec3 normal;
     glm::vec3 color;
 };
 
-struct alignas(16) UniformBufferObject {
+struct PushConstants {
     glm::mat4 model;
+    glm::vec4 color;
+    int isLightSource;
+};
+
+struct alignas(16) UniformBufferObject {
     glm::mat4 view;
     glm::mat4 proj;
-    glm::vec4 tintColor;
+    glm::vec3 lightDir;
+    float lightIntensity;
+    glm::vec3 lightColor;
+    float padding1;
+    glm::vec3 ambientColor;
+    float shininess;
+    glm::vec3 specularColor;
+    float padding2;
+    glm::vec3 cameraPos;
+    float padding3;
+    glm::vec3 albedo;
+    float padding4;
 };
 
 extern VkPipeline pipeline;
@@ -43,18 +60,32 @@ extern VkDescriptorSet descriptorSet;
 extern std::vector<Vertex> vertices;
 extern std::vector<uint32_t> indices;
 
-extern bool useOrtho;
-extern glm::vec3 position;
-extern glm::vec3 rotation;
-extern glm::vec3 scale;
-extern bool isAnimating;
-extern float animSpeed;
-extern float trajectoryRadius;
-extern glm::vec4 tintColor;
-
+// Camera
 extern float cameraDistance;
-extern float orthoSize;
+extern float cameraYaw;
+extern float cameraPitch;
 extern float fov;
+extern bool useOrtho;
+extern float orthoSize;
+
+// Object Rotation
+extern float cubeRotX;
+extern float cubeRotY;
+extern float cubeRotZ;
+
+// Light
+extern glm::vec3 lightDir;
+extern float lightIntensity;
+extern glm::vec3 lightColor;
+extern bool showLightSource;
+
+// Material
+extern glm::vec3 ambientColor;
+extern float shininess;
+extern glm::vec3 specularColor;
+extern glm::vec3 objectAlbedo;
+
+// Mouse
 extern bool isMouseDragging;
 extern glm::vec2 lastMousePos;
 extern float mouseSensitivity;

@@ -1,14 +1,32 @@
 build/
-cmake-build-*/
+build-*/
 out/
+cmake-build-*/
+build-debug/
+
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+_deps/
 
 *.spv
 
 *.o
 *.obj
+*.exe
+*.out
+*.pdb
+*.ilk
+*.exp
+*.lib
 
+.vs/
 .vscode/
 .idea/
-*.swp
+*.sln
+*.vcxproj*
+*.user
 
 imgui.ini
+

@@ -24,47 +24,82 @@ VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
 
-bool useOrtho = false;
-glm::vec3 position = {0.0f, 0.0f, 0.0f};
-glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
-glm::vec3 scale = {1.0f, 1.0f, 1.0f};
-bool isAnimating = true;
-float animSpeed = 0.5f;
-float trajectoryRadius = 3.0f;
-glm::vec4 tintColor = {1.0f, 1.0f, 1.0f, 1.0f};
-
-float cameraDistance = 10.0f;
-float orthoSize = 5.0f;
+// Camera
+float cameraDistance = 8.0f;
+float cameraYaw = 0.7f;
+float cameraPitch = 0.4f;
 float fov = 45.0f;
+bool useOrtho = false;
+float orthoSize = 4.0f;
+
+// Object Rotation
+float cubeRotX = 0.0f;
+float cubeRotY = 0.0f;
+float cubeRotZ = 0.0f;
+
+// Light
+glm::vec3 lightDir = glm::normalize(glm::vec3(0.5f, -1.0f, 0.3f));
+float lightIntensity = 1.5f; 
+glm::vec3 lightColor = glm::vec3(1.0f, 0.95f, 0.9f);
+bool showLightSource = true;
+
+// Material
+glm::vec3 ambientColor = glm::vec3(0.3f, 0.3f, 0.35f); 
+float shininess = 64.0f; 
+glm::vec3 specularColor = glm::vec3(1.0f, 1.0f, 1.0f);
+glm::vec3 objectAlbedo = glm::vec3(1.0f, 1.0f, 1.0f);
+
+// Mouse
 bool isMouseDragging = false;
-glm::vec2 lastMousePos = {0.0f, 0.0f};
-float mouseSensitivity = 0.3f;
+glm::vec2 lastMousePos = glm::vec2(0.0f, 0.0f);
+float mouseSensitivity = 0.005f;
 
-void generateParallelepiped() {
-    auto makeVertex = [](float x, float y, float z) {
-        glm::vec3 pos(x, y, z);
-        glm::vec3 color = (pos + 1.0f) * 0.5f;
-        return Vertex{pos, color};
-    };
-
+void generateParallelepipedWithNormals() {
     vertices = {
-        makeVertex(-1.0f, -1.0f, -1.0f),
-        makeVertex( 1.0f, -1.0f, -1.0f),
-        makeVertex( 1.0f,  1.0f, -1.0f),
-        makeVertex(-1.0f,  1.0f, -1.0f),
-        makeVertex(-1.0f, -1.0f,  1.0f),
-        makeVertex( 1.0f, -1.0f,  1.0f),
-        makeVertex( 1.0f,  1.0f,  1.0f),
-        makeVertex(-1.0f,  1.0f,  1.0f)
+        // Front face (z = 1) - normal (0, 0, 1) - Ярко-красный
+        {{-1.0f, -1.0f,  1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.1f, 0.1f}},
+        {{ 1.0f, -1.0f,  1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.1f, 0.1f}},
+        {{ 1.0f,  1.0f,  1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.1f, 0.1f}},
+        {{-1.0f,  1.0f,  1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.1f, 0.1f}},
+        
+        // Back face (z = -1) - normal (0, 0, -1) - Ярко-зеленый
+        {{ 1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.1f, 1.0f, 0.1f}},
+        {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.1f, 1.0f, 0.1f}},
+        {{-1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.1f, 1.0f, 0.1f}},
+        {{ 1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {0.1f, 1.0f, 0.1f}},
+        
+        // Top face (y = 1) - normal (0, 1, 0) - Ярко-синий
+        {{-1.0f,  1.0f,  1.0f}, {0.0f, 1.0f, 0.0f}, {0.1f, 0.1f, 1.0f}},
+        {{ 1.0f,  1.0f,  1.0f}, {0.0f, 1.0f, 0.0f}, {0.1f, 0.1f, 1.0f}},
+        {{ 1.0f,  1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.1f, 0.1f, 1.0f}},
+        {{-1.0f,  1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.1f, 0.1f, 1.0f}},
+        
+        // Bottom face (y = -1) - normal (0, -1, 0) - Желтый
+        {{-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 0.1f}},
+        {{ 1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 0.1f}},
+        {{ 1.0f, -1.0f,  1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 0.1f}},
+        {{-1.0f, -1.0f,  1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 0.1f}},
+        
+        // Right face (x = 1) - normal (1, 0, 0) - Пурпурный
+        {{ 1.0f, -1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.1f, 1.0f}},
+        {{ 1.0f,  1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.1f, 1.0f}},
+        {{ 1.0f,  1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.1f, 1.0f}},
+        {{ 1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.1f, 1.0f}},
+        
+        // Left face (x = -1) - normal (-1, 0, 0) - Голубой
+        {{-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.1f, 1.0f, 1.0f}},
+        {{-1.0f,  1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.1f, 1.0f, 1.0f}},
+        {{-1.0f,  1.0f,  1.0f}, {-1.0f, 0.0f, 0.0f}, {0.1f, 1.0f, 1.0f}},
+        {{-1.0f, -1.0f,  1.0f}, {-1.0f, 0.0f, 0.0f}, {0.1f, 1.0f, 1.0f}}
     };
 
     indices = {
-        0, 1, 2, 2, 3, 0,
-        4, 5, 6, 6, 7, 4,
-        3, 2, 6, 6, 7, 3,
-        0, 1, 5, 5, 4, 0,
-        1, 5, 6, 6, 2, 1,
-        0, 4, 7, 7, 3, 0
+        0,  1,  2,  2,  3,  0,
+        4,  5,  6,  6,  7,  4,
+        8,  9,  10, 10, 11, 8,
+        12, 13, 14, 14, 15, 12,
+        16, 17, 18, 18, 19, 16,
+        20, 21, 22, 22, 23, 20
     };
 }
 
@@ -110,8 +145,22 @@ VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code
     return module;
 }
 
+glm::vec3 getCameraPosition() {
+    float x = cameraDistance * cos(cameraPitch) * sin(cameraYaw);
+    float y = cameraDistance * sin(cameraPitch);
+    float z = cameraDistance * cos(cameraPitch) * cos(cameraYaw);
+    return glm::vec3(x, y, z);
+}
+
+glm::mat4 getViewMatrix() {
+    glm::vec3 camPos = getCameraPosition();
+    glm::vec3 target(0.0f, 0.0f, 0.0f);
+    glm::vec3 up(0.0f, 1.0f, 0.0f);
+    return glm::lookAt(camPos, target, up);
+}
+
 bool initialize() {
-    generateParallelepiped();
+    generateParallelepipedWithNormals();
     auto& ctx = graphics::internal::context;
 
     VkDescriptorSetLayoutBinding uboLayoutBinding = {};
@@ -130,18 +179,25 @@ bool initialize() {
         return false;
     }
 
+    VkPushConstantRange pushConstantRange = {};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(PushConstants);
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
     if (vkCreatePipelineLayout(ctx.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
         std::cerr << "Failed to create pipeline layout!\n";
         return false;
     }
 
-    auto vertCode = loadShader("shaders/parallelepiped.vert.spv");
-    auto fragCode = loadShader("shaders/parallelepiped.frag.spv");
+    auto vertCode = loadShader("shaders/lighting.vert.spv");
+    auto fragCode = loadShader("shaders/lighting.frag.spv");
 
     VkShaderModule vertModule = createShaderModule(ctx.device, vertCode);
     VkShaderModule fragModule = createShaderModule(ctx.device, fragCode);
@@ -162,7 +218,7 @@ bool initialize() {
     bindingDesc.stride = sizeof(Vertex);
     bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    VkVertexInputAttributeDescription attributeDescs[2] = {};
+    VkVertexInputAttributeDescription attributeDescs[3] = {};
     attributeDescs[0].location = 0;
     attributeDescs[0].binding = 0;
     attributeDescs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -171,13 +227,18 @@ bool initialize() {
     attributeDescs[1].location = 1;
     attributeDescs[1].binding = 0;
     attributeDescs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescs[1].offset = offsetof(Vertex, color);
+    attributeDescs[1].offset = offsetof(Vertex, normal);
+
+    attributeDescs[2].location = 2;
+    attributeDescs[2].binding = 0;
+    attributeDescs[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescs[2].offset = offsetof(Vertex, color);
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.pVertexBindingDescriptions = &bindingDesc;
-    vertexInputInfo.vertexAttributeDescriptionCount = 2;
+    vertexInputInfo.vertexAttributeDescriptionCount = 3;
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescs;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
@@ -350,35 +411,47 @@ void shutdown() {
 void update(double time) {
     auto& ctx = graphics::internal::context;
 
-    ImGui::Begin("Lab 1 Controls (Grade 4)");
+    ImGui::Begin("Lab 2 - Camera and Lighting");
 
-    ImGui::Checkbox("Orthographic Projection", &useOrtho);
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Camera");
+    ImGui::Separator();
+    ImGui::SliderFloat("Distance", &cameraDistance, 2.0f, 20.0f);
+    ImGui::SliderFloat("Yaw", &cameraYaw, -3.14159f, 3.14159f);
+    ImGui::SliderFloat("Pitch", &cameraPitch, -1.5f, 1.5f);
+    ImGui::Checkbox("Orthographic", &useOrtho);
+    ImGui::SliderFloat("FOV", &fov, 20.0f, 90.0f);
+    ImGui::SliderFloat("Ortho Size", &orthoSize, 2.0f, 10.0f);
     ImGui::Separator();
 
-    ImGui::SliderFloat3("Position", &position.x, -5.0f, 5.0f);
-    ImGui::SliderFloat3("Rotation", &rotation.x, 0.0f, 360.0f);
-    ImGui::SliderFloat3("Scale", &scale.x, 0.1f, 3.0f);
+    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Object Rotation");
+    ImGui::Separator();
+    ImGui::SliderFloat("Rot X", &cubeRotX, 0.0f, 360.0f);
+    ImGui::SliderFloat("Rot Y", &cubeRotY, 0.0f, 360.0f);
+    ImGui::SliderFloat("Rot Z", &cubeRotZ, 0.0f, 360.0f);
     ImGui::Separator();
 
-    ImGui::Checkbox("Animate (Play/Pause)", &isAnimating);
-    ImGui::SliderFloat("Animation Speed", &animSpeed, 0.1f, 5.0f);
-    ImGui::SliderFloat("Trajectory Radius", &trajectoryRadius, 1.0f, 10.0f);
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Directional Light");
+    ImGui::Separator();
+    ImGui::SliderFloat3("Direction", &lightDir.x, -1.0f, 1.0f);
+    ImGui::ColorEdit3("Color", &lightColor.x);
+    ImGui::SliderFloat("Intensity", &lightIntensity, 0.0f, 3.0f);
+    ImGui::Checkbox("Show Light Source", &showLightSource);
     ImGui::Separator();
 
-    ImGui::ColorEdit4("Global Tint Color", &tintColor.x);
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Material (Blinn-Phong)");
+    ImGui::Separator();
+    ImGui::ColorEdit3("Albedo", &objectAlbedo.x); // <-- НОВОЕ
+    ImGui::ColorEdit3("Ambient", &ambientColor.x);
+    ImGui::SliderFloat("Shininess", &shininess, 1.0f, 256.0f);
+    ImGui::ColorEdit3("Specular", &specularColor.x);
     ImGui::Separator();
 
-    ImGui::SliderFloat("Camera Distance (Zoom)", &cameraDistance, 2.0f, 30.0f);
-    ImGui::SliderFloat("FOV (Perspective)", &fov, 20.0f, 90.0f);
-    ImGui::SliderFloat("Ortho Size", &orthoSize, 2.0f, 15.0f);
-    ImGui::Separator();
-
-    ImGui::SliderFloat("Mouse Sensitivity", &mouseSensitivity, 0.1f, 2.0f);
-    ImGui::Text("Drag with left mouse button to rotate");
-    ImGui::Text("Scroll to zoom");
+    ImGui::Text("Mouse: Left Drag = Rotate Camera, Scroll = Zoom");
+    ImGui::SliderFloat("Sensitivity", &mouseSensitivity, 0.001f, 0.02f);
 
     ImGui::End();
 
+    // Mouse handling
     ImGuiIO& io = ImGui::GetIO();
 
     if (ImGui::IsMouseDown(0) && !io.WantCaptureMouse) {
@@ -389,13 +462,9 @@ void update(double time) {
             glm::vec2 currentMousePos(io.MousePos.x, io.MousePos.y);
             glm::vec2 delta = currentMousePos - lastMousePos;
 
-            rotation.y += delta.x * mouseSensitivity;
-            rotation.x += delta.y * mouseSensitivity;
-
-            rotation.x = glm::clamp(rotation.x, -90.0f, 90.0f);
-
-            if (rotation.y > 360.0f) rotation.y -= 360.0f;
-            if (rotation.y < 0.0f) rotation.y += 360.0f;
+            cameraYaw += delta.x * mouseSensitivity;
+            cameraPitch += delta.y * mouseSensitivity;
+            cameraPitch = glm::clamp(cameraPitch, -1.5f, 1.5f);
 
             lastMousePos = currentMousePos;
         }
@@ -404,45 +473,41 @@ void update(double time) {
     }
 
     if (io.MouseWheel != 0.0f && !io.WantCaptureMouse) {
-        cameraDistance -= io.MouseWheel * 1.0f;
-        cameraDistance = glm::clamp(cameraDistance, 2.0f, 30.0f);
+        cameraDistance -= io.MouseWheel * 0.5f;
+        cameraDistance = glm::clamp(cameraDistance, 2.0f, 20.0f);
     }
 
+    // Normalize light direction
+    lightDir = glm::normalize(lightDir);
+
+    // Get camera position for shader
+    glm::vec3 camPos = getCameraPosition();
+
+    // Update UBO
     UniformBufferObject ubo = {};
-    glm::mat4 model = glm::mat4(1.0f);
-
-    if (isAnimating) {
-        float angle = (float)time * animSpeed;
-        float animX = cos(angle) * trajectoryRadius;
-        float animZ = sin(angle) * trajectoryRadius;
-        model = glm::translate(model, glm::vec3(animX, 0.0f, animZ));
-    }
-
-    model = glm::translate(model, position);
-    model = glm::rotate(model, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::scale(model, scale);
-
-    ubo.model = model;
-
-    ubo.view = glm::lookAt(
-        glm::vec3(0.0f, cameraDistance * 0.6f, cameraDistance),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 1.0f, 0.0f)
-    );
+    ubo.view = getViewMatrix();
 
     float aspect = (float)ctx.swapchain_extent.width / (float)ctx.swapchain_extent.height;
-    
     if (useOrtho) {
-        ubo.proj = glm::ortho(-orthoSize * aspect, orthoSize * aspect, -orthoSize, orthoSize, 0.1f, 100.0f);
+        ubo.proj = glm::ortho(-orthoSize * aspect, orthoSize * aspect, 
+                              -orthoSize, orthoSize, 0.1f, 100.0f);
     } else {
         ubo.proj = glm::perspective(glm::radians(fov), aspect, 0.1f, 100.0f);
     }
-    
     ubo.proj[1][1] *= -1.0f;
 
-    ubo.tintColor = tintColor;
+    ubo.lightDir = lightDir;
+    ubo.lightIntensity = lightIntensity;
+    ubo.lightColor = lightColor;
+    ubo.ambientColor = ambientColor;
+    ubo.shininess = shininess;
+    ubo.specularColor = specularColor;
+    ubo.cameraPos = camPos;
+    ubo.albedo = objectAlbedo;
+    ubo.padding1 = 0.0f;
+    ubo.padding2 = 0.0f;
+    ubo.padding3 = 0.0f;
+    ubo.padding4 = 0.0f;
 
     void* data;
     vmaMapMemory(ctx.allocator, uniformBufferAlloc, &data);
@@ -482,8 +547,40 @@ void render(const graphics::internal::FrameData& fd) {
     vkCmdBindDescriptorSets(fd.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
-    vkCmdDrawIndexed(fd.command_buffer,
-                     static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+    PushConstants pcMain = {};
+    
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::rotate(model, glm::radians(cubeRotX), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(cubeRotY), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(cubeRotZ), glm::vec3(0.0f, 0.0f, 1.0f));
+    
+    pcMain.model = model;
+    pcMain.isLightSource = 0;
+    
+    vkCmdPushConstants(fd.command_buffer, pipelineLayout, 
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 
+                       0, sizeof(PushConstants), &pcMain);
+                       
+    vkCmdDrawIndexed(fd.command_buffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+    if (showLightSource) {
+        PushConstants pcLight = {};
+        
+        glm::vec3 lightGizmoPos = -lightDir * 8.0f; 
+        
+        glm::mat4 translation = glm::translate(glm::mat4(1.0f), lightGizmoPos);
+        glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.3f));
+        pcLight.model = translation * scale;
+        
+        pcLight.color = glm::vec4(lightColor * lightIntensity, 1.0f);
+        pcLight.isLightSource = 1;
+
+        vkCmdPushConstants(fd.command_buffer, pipelineLayout, 
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 
+                           0, sizeof(PushConstants), &pcLight);
+
+        vkCmdDrawIndexed(fd.command_buffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+    }
 
     vkCmdEndRenderPass(fd.command_buffer);
     vkEndCommandBuffer(fd.command_buffer);
